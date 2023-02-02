@@ -4,7 +4,48 @@ schema {
 }
 
 type Query {
-
+  getStudents(limit: Int!, nextToken: string): StudentsPage
+  getLessons(limit: Int!, nextToken: string): LessonsPage
 }
 
-type Mutation {}
+type Mutation {
+  checkin(studentId: ID!): Boolean!
+  @aws_iam
+
+  register(student: RegisterInput): Boolean!
+  @aws_iam
+}
+
+type StudentsPage {
+  students: [Student!]!
+  nextToken: String
+}
+
+type LessonsPage {
+  lessons: [Lesson!]!
+  nextToken: String
+}
+
+type Student {
+  id: ID!
+  first: String!
+  last: String!
+  email: AWSEmail!
+  phone: String
+  birthdate: AWSDate!
+}
+
+type Lesson {
+  id: ID!
+  name: String!
+  students: [Student!]!
+  createdAt: AWSDateTime!
+}
+
+input RegisterInput {
+  first: String!
+  last: String!
+  email: AWSEmail!
+  phone: String
+  birthdate: AWSDate!
+}
