@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "sls": "sls",
     "export-env": "sls export-env --all",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

@@ -73,3 +73,9 @@ resources:
       
     CognitoWebClientId:
       Value: !Ref WebUserPoolClient
+
+    ApiUrl:
+      Value: 
+        Fn::GetAtt:
+          - BoldcheckinGraphQlApi
+          - GraphQLUrl
