@@ -1,0 +1,7 @@
+name: bold-checkin
+schema: schema.graphql
+authenticationType: AMAZON_COGNITO_USER_POOLS
+userPoolConfig:
+  awsRegion: us-east-1
+  defaultAction: ALLOW
+  userPoolId: !Ref CognitoUserPool

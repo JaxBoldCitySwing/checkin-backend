@@ -1,0 +1,22 @@
+{
+  "name": "bold_backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "export-env": "sls export-env --all",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ulid": "^2.3.0"
+  },
+  "devDependencies": {
+    "serverless": "3.27.0",
+    "serverless-appsync-plugin": "^1.14.0",
+    "serverless-export-env": "^2.2.0",
+    "serverless-export-outputs": "^1.0.2"
+  }
+}

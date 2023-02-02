@@ -1,0 +1,73 @@
+service: bold-checkin
+
+plugins:
+  - serverless-export-outputs
+  - serverless-appsync-plugin
+  - serverless-export-env
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs16.x
+
+custom:
+  appSync:
+    - ${file(serverless.appsync.yml)}
+
+  export-env:
+    overwrite: true
+
+  exportOutputs:
+    include:
+      - AwsRegion
+      - ApiUrl
+      - CognitoUserPoolId
+      - CognitoWebClientId
+    output:
+      file: ./.env-outputs
+
+# functions:
+
+resources:
+  Resources:    
+    CognitoUserPool:
+      Type: AWS::Cognito::UserPool
+      Properties:
+        AutoVerifiedAttributes:
+          - email
+        Policies:
+          PasswordPolicy:
+            MinimumLength: 8
+            RequireLowercase: false
+            RequireNumbers: false
+            RequireUppercase: false
+            RequireSymbols: false
+        UsernameAttributes:
+          - email
+        Schema:
+          - AttributeDataType: String
+            Name: name
+            Required: false
+            Mutable: true
+
+    WebUserPoolClient:
+      Type: AWS::Cognito::UserPoolClient
+      Properties:
+        UserPoolId: !Ref CognitoUserPool
+        ClientName: web
+        ExplicitAuthFlows:
+          - ALLOW_USER_SRP_AUTH
+          - ALLOW_USER_PASSWORD_AUTH
+          - ALLOW_REFRESH_TOKEN_AUTH
+        PreventUserExistenceErrors: ENABLED
+
+  Outputs:
+    AwsRegion:
+      Value: ${aws:region}
+
+    CognitoUserPoolId:
+      Value: !Ref CognitoUserPool
+      
+    CognitoWebClientId:
+      Value: !Ref WebUserPoolClient
