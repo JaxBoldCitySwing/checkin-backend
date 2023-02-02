@@ -45,6 +45,8 @@ resources:
             RequireSymbols: false
         UsernameAttributes:
           - email
+        AdminCreateUserConfig:
+          AllowAdminCreateUserOnly: true
         Schema:
           - AttributeDataType: String
             Name: name

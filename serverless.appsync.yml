@@ -5,3 +5,5 @@ userPoolConfig:
   awsRegion: us-east-1
   defaultAction: ALLOW
   userPoolId: !Ref CognitoUserPool
+additionalAuthenticationProviders:
+  - authenticationType: AWS_IAM
