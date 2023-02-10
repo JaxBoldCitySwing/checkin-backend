@@ -4,12 +4,12 @@ schema {
 }
 
 type Query {
-  getStudents(limit: Int!, nextToken: string): StudentsPage
-  getLessons(limit: Int!, nextToken: string): LessonsPage
+  getStudents(limit: Int!, nextToken: String): StudentsPage
+  getLessons(limit: Int!, nextToken: String): LessonsPage
 }
 
 type Mutation {
-  checkin(studentId: ID!): Boolean!
+  checkin(studentId: ID!, type: CheckinType!): Boolean!
   @aws_iam
 
   register(student: RegisterInput): Boolean!
@@ -32,6 +32,7 @@ type Student {
   last: String!
   email: AWSEmail!
   phone: String
+  lessons: [Lesson!]!
   birthdate: AWSDate!
 }
 
@@ -48,4 +49,11 @@ input RegisterInput {
   email: AWSEmail!
   phone: String
   birthdate: AWSDate!
+}
+
+enum CheckinType {
+  BEGINNER
+  INTERMEDIATE
+  SOCIAL
+  SPECIAL
 }
