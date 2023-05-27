@@ -7,3 +7,46 @@ userPoolConfig:
   userPoolId: !Ref CognitoUserPool
 additionalAuthenticationProviders:
   - authenticationType: AWS_IAM
+logConfig:
+  loggingRoleArn: !GetAtt AppSyncLoggingServiceRole.Arn # Where AppSyncLoggingServiceRole is a role with CloudWatch Logs write access
+  level: ALL # Logging Level: NONE | ERROR | ALL
+  excludeVerboseContent: false
+mappingTemplatesLocation: mapping-templates
+mappingTemplates:
+
+  # Mutations
+  - type: Mutation
+    field: register
+    dataSource: registerStudentFunction
+    request: false
+    response: false
+  - type: Mutation
+    field: checkin
+    dataSource: checkInsTable
+
+  # Queries
+  - type: Query
+    field: searchStudents
+    dataSource: searchStudentsFunction
+    request: false
+    response: false
+
+dataSources:
+  - type: NONE
+    name: none
+  - type: AMAZON_DYNAMODB
+    name: studentsTable
+    config:
+      tableName: !Ref StudentsTable
+  - type: AMAZON_DYNAMODB
+    name: checkInsTable
+    config:
+      tableName: !Ref CheckInsTable
+  - type: AWS_LAMBDA
+    name: registerStudentFunction
+    config:
+      functionName: registerStudent
+  - type: AWS_LAMBDA
+    name: searchStudentsFunction
+    config:
+      functionName: searchStudents

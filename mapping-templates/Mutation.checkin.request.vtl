@@ -1,0 +1,16 @@
+#set($id=$util.autoUlid())
+{
+  "version": "2018-05-29",
+  "operation": "PutItem",
+  "key": {
+    "id": $util.dynamodb.toDynamoDBJson("${id}")
+  },
+  "attributeValues" : {
+    "studentId": $util.dynamodb.toDynamoDBJson($context.arguments.studentId),
+    "type": $util.dynamodb.toDynamoDBJson($context.argumentstype),
+    "createdAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601())
+  },
+  "condition": {
+    "expression": "attribute_not_exists(id)",
+  }
+}

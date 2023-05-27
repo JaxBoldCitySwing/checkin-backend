@@ -6,17 +6,19 @@ schema {
 type Query {
   getStudents(limit: Int!, nextToken: String): StudentsPage
   getLessons(limit: Int!, nextToken: String): LessonsPage
+  searchStudents(name: String!): StudentsPage
+  @aws_iam @aws_cognito_user_pools
 }
 
 type Mutation {
   checkin(studentId: ID!, type: CheckinType!): Boolean!
-  @aws_iam
+  @aws_iam @aws_cognito_user_pools
 
-  register(student: RegisterInput): Boolean!
-  @aws_iam
+  register(student: RegisterInput!): Student!
+  @aws_iam @aws_cognito_user_pools
 }
 
-type StudentsPage {
+type StudentsPage @aws_iam @aws_cognito_user_pools {
   students: [Student!]!
   nextToken: String
 }
@@ -26,7 +28,7 @@ type LessonsPage {
   nextToken: String
 }
 
-type Student {
+type Student @aws_iam @aws_cognito_user_pools {
   id: ID!
   first: String!
   last: String!

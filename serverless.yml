@@ -4,6 +4,7 @@ plugins:
   - serverless-export-outputs
   - serverless-appsync-plugin
   - serverless-export-env
+  - serverless-iam-roles-per-function
 
 frameworkVersion: '3'
 
@@ -12,6 +13,9 @@ provider:
   runtime: nodejs16.x
 
 custom:
+  stage: dev
+  region: us-east-1
+  deploymentMethod: direct
   appSync:
     - ${file(serverless.appsync.yml)}
 
@@ -27,10 +31,104 @@ custom:
     output:
       file: ./.env-outputs
 
-# functions:
+functions:
+  registerStudent:
+    handler: functions/register.handler
+    environment:
+      STUDENTS_TABLE: !Ref StudentsTable
+    iamRoleStatements:
+      - Effect: Allow
+        Action: Dynamodb:PutItem
+        Resource: !GetAtt StudentsTable.Arn
+      - Effect: Allow
+        Action: Dynamodb:Query
+        Resource: !Sub "${StudentsTable.Arn}/index/byEmail"
+
+  searchStudents:
+    handler: functions/search-students.handler
+    environment:
+      STUDENTS_TABLE: !Ref StudentsTable
+      LOCATION: 'DIVA'
+    iamRoleStatements:
+      - Effect: Allow
+        Action: Dynamodb:Query
+        Resource: !Sub "${StudentsTable.Arn}/index/byFirstName"
+      - Effect: Allow
+        Action: Dynamodb:Query
+        Resource: !Sub "${StudentsTable.Arn}/index/byLastName"
+    
 
 resources:
-  Resources:    
+  Resources:
+    StudentsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        BillingMode: PAY_PER_REQUEST
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: last
+            AttributeType: S
+          - AttributeName: first
+            AttributeType: S
+          - AttributeName: location
+            AttributeType: S
+          - AttributeName: email
+            AttributeType: S
+        GlobalSecondaryIndexes:
+          - IndexName: byLastName
+            KeySchema:
+              - AttributeName: location
+                KeyType: HASH
+              - AttributeName: last
+                KeyType: RANGE
+              
+            Projection:
+              ProjectionType: ALL
+          - IndexName: byFirstName
+            KeySchema:
+              - AttributeName: location
+                KeyType: HASH
+              - AttributeName: first
+                KeyType: RANGE
+              
+            Projection:
+              ProjectionType: ALL
+          - IndexName: byEmail
+            KeySchema:
+              - AttributeName: email
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        Tags:
+          - Key: Environment
+            Value: ${self:custom.stage}
+          - Key: Name
+            Value: bold-checkin-students-table                
+
+    CheckInsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        BillingMode: PAY_PER_REQUEST
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: studentId
+            AttributeType: S
+        GlobalSecondaryIndexes:
+          - IndexName: byStudent
+            KeySchema:
+              - AttributeName: studentId
+                KeyType: HASH
+            Projection:
+                ProjectionType: ALL
+
     CognitoUserPool:
       Type: AWS::Cognito::UserPool
       Properties:
@@ -63,6 +161,105 @@ resources:
           - ALLOW_USER_PASSWORD_AUTH
           - ALLOW_REFRESH_TOKEN_AUTH
         PreventUserExistenceErrors: ENABLED
+
+    IdentityPool:
+      Type: AWS::Cognito::IdentityPool
+      Properties:
+        AllowUnauthenticatedIdentities: true
+        AllowClassicFlow: false
+        CognitoIdentityProviders:
+          - ClientId: !Ref WebUserPoolClient
+            ProviderName: !GetAtt CognitoUserPool.ProviderName
+            ServerSideTokenCheck: true
+
+    UnauthedClientRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Federated: cognito-identity.amazonaws.com
+              Action: sts:AssumeRoleWithWebIdentity
+              Condition:
+                StringEquals:
+                  cognito-identity.amazonaws.com:aud: !Ref IdentityPool
+                ForAnyValue:StringLike:
+                  cognito-identity.amazonaws.com:amr: unauthenticated
+        Policies:
+          - PolicyName: CognitoPolicy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action: appsync:GraphQL
+                  Resource: 
+                    - !Sub ${BoldcheckinGraphQlApi.Arn}/types/Mutation/fields/register
+                    - !Sub ${BoldcheckinGraphQlApi.Arn}/types/Mutation/fields/checkin
+                    - !Sub ${BoldcheckinGraphQlApi.Arn}/types/Query/fields/searchStudents
+                    - !Sub ${BoldcheckinGraphQlApi.Arn}/types/Student
+                    - !Sub ${BoldcheckinGraphQlApi.Arn}/types/StudentsPage
+
+    AuthedClientRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Federated: cognito-identity.amazonaws.com
+              Action: sts:AssumeRoleWithWebIdentity
+              Condition:
+                StringEquals:
+                  cognito-identity.amazonaws.com:aud: !Ref IdentityPool
+                ForAnyValue:StringLike:
+                  cognito-identity.amazonaws.com:amr: authenticated
+        Policies:
+          - PolicyName: CognitoPolicy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action: appsync:GraphQL
+                  Resource: 
+                    - !Sub ${BoldcheckinGraphQlApi.Arn}/types/Mutation/fields/register
+                    - !Sub ${BoldcheckinGraphQlApi.Arn}/types/Mutation/fields/checkin
+
+    IdentityPoolRoleMapping:
+      Type: AWS::Cognito::IdentityPoolRoleAttachment
+      Properties:
+        IdentityPoolId: !Ref IdentityPool
+        Roles:
+          authenticated: !GetAtt AuthedClientRole.Arn
+          unauthenticated: !GetAtt UnauthedClientRole.Arn
+
+    AppSyncLoggingServiceRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: 'Allow'
+              Principal:
+                Service:
+                  - appsync.amazonaws.com
+              Action:
+                - sts:AssumeRole
+        Policies:
+          - PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: 'Allow'
+                  Action:
+                    - logs:CreateLogGroup
+                    - logs:CreateLogStream
+                    - logs:DescribeLogStreams
+                    - logs:PutLogEvents
+                  Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*
+            PolicyName: AppSyncLoggingServicePolicy
+
 
   Outputs:
     AwsRegion:
